@@ -164,21 +164,19 @@ export function useSubscription() {
         async (plan: string, reference: string) => {
             if (!user) return;
 
-            const { error } = await supabase
-                .from('user_profiles')
-                .update({
-                    subscription_plan: plan,
-                    subscription_status: 'active',
-                    payment_reference: reference,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq('id', user.id);
+            // Instead of insecurely updating the DB directly from the client,
+            // we call our secure Edge Function to verify the payment 
+            // and update the database safely, bypassing RLS.
+            const { error } = await supabase.functions.invoke('paystack-webhook', {
+                body: { event: 'client_activation', data: { reference, plan, customer: { email: user.email } } }
+            });
 
             if (error) {
-                console.error('[useSubscription] Failed to activate subscription:', error);
+                console.error('[useSubscription] Failed to trigger activation webhook:', error);
                 throw error;
             }
 
+            // Optimistic update:
             setProfile((prev) =>
                 prev
                     ? {

@@ -12,7 +12,7 @@ const planDetails: Record<string, { name: string; monthly: number; yearly: numbe
 };
 
 export default function PaymentPage() {
-    const { user } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
     const { activateSubscription } = useSubscription();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -27,10 +27,10 @@ export default function PaymentPage() {
     const amountKobo = price * 100;
 
     useEffect(() => {
-        if (!user) {
+        if (!authLoading && !user) {
             navigate('/login');
         }
-    }, [user, navigate]);
+    }, [user, authLoading, navigate]);
 
     const handlePay = () => {
         if (!user?.email) return;

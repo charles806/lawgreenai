@@ -6,6 +6,9 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   id UUID REFERENCES auth.users(id) PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   
+  -- Message tracking
+  message_count INTEGER DEFAULT 0,
+  
   -- Subscription info (used in index.ts)
   subscription_plan TEXT DEFAULT 'free',
   subscription_status TEXT DEFAULT 'inactive',
@@ -32,12 +35,18 @@ ON public.user_profiles
 FOR UPDATE 
 USING (auth.uid() = id);
 
+-- Allow users to insert their own profile
+CREATE POLICY "Users can insert their own profile" 
+ON public.user_profiles 
+FOR INSERT 
+WITH CHECK (auth.uid() = id);
+
 -- Trigger to automatically create a profile when a new user signs up via Supabase Auth
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.user_profiles (id, email)
-  VALUES (new.id, new.email);
+  INSERT INTO public.user_profiles (id, email, message_count)
+  VALUES (new.id, new.email, 0);
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
